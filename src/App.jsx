@@ -1,5 +1,6 @@
 import axios from "axios";
 import React, { Suspense, useEffect, useState } from "react";
+import debounce from "lodash.debounce"; // Install with: npm install lodash.debounce
 
 const CountryCard = React.lazy(() => {
   return new Promise((resolve) => {
@@ -11,7 +12,7 @@ const CountryCard = React.lazy(() => {
               <img
                 src={country.flags.png}
                 className="w-16 h-10 object-cover"
-                alt={country.flags.alt}
+                alt={country.flags.alt || "Country flag"}
               />
             </div>
             <div className="p-4">
@@ -37,10 +38,13 @@ const App = () => {
     setError("");
     try {
       const res = await axios.get(url);
-      const countries = await res.data;
-      setCountries(countries);
-    } catch (error) {
-      setError("No countries found");
+      const fetchedCountries = res.data;
+      setCountries(fetchedCountries);
+      if (!fetchedCountries.length) {
+        setError("No countries found");
+      }
+    } catch (err) {
+      setError("An error occurred while fetching countries.");
     } finally {
       setLoading(false);
     }
@@ -52,16 +56,20 @@ const App = () => {
     );
   }, []);
 
-  const searchCountry = async (e) => {
-    if (e.target.value) {
+  const searchCountry = debounce(async (query) => {
+    if (query) {
       fetchCountries(
-        `https://restcountries.com/v3.1/name/${e.target.value}?fields=name,flags,population`
+        `https://restcountries.com/v3.1/name/${query}?fields=name,flags,population`
       );
     } else {
       fetchCountries(
         "https://restcountries.com/v3.1/all?fields=name,flags,population"
       );
     }
+  }, 500); // 500ms debounce delay
+
+  const handleInputChange = (e) => {
+    searchCountry(e.target.value.trim());
   };
 
   return (
@@ -72,7 +80,7 @@ const App = () => {
             type="search"
             placeholder="Search by name"
             className="w-full px-2 py-3 focus:ring-2 focus:ring-black outline-none border-none rounded-md"
-            onChange={(e) => searchCountry(e)}
+            onChange={handleInputChange}
           />
         </section>
         <section className="w-full h-[50rem] overflow-auto">
