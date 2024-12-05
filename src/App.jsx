@@ -1,6 +1,5 @@
 import axios from "axios";
-import React, { Suspense, useEffect, useState } from "react";
-import debounce from "lodash.debounce"; // Install with: npm install lodash.debounce
+import React, { Suspense, useEffect, useState, useCallback } from "react";
 
 const CountryCard = React.lazy(() => {
   return new Promise((resolve) => {
@@ -56,17 +55,29 @@ const App = () => {
     );
   }, []);
 
-  const searchCountry = debounce(async (query) => {
-    if (query) {
-      fetchCountries(
-        `https://restcountries.com/v3.1/name/${query}?fields=name,flags,population`
-      );
-    } else {
-      fetchCountries(
-        "https://restcountries.com/v3.1/all?fields=name,flags,population"
-      );
-    }
-  }, 500); // 500ms debounce delay
+  // Custom debounce function
+  const debounce = (func, delay) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  const searchCountry = useCallback(
+    debounce((query) => {
+      if (query) {
+        fetchCountries(
+          `https://restcountries.com/v3.1/name/${query}?fields=name,flags,population`
+        );
+      } else {
+        fetchCountries(
+          "https://restcountries.com/v3.1/all?fields=name,flags,population"
+        );
+      }
+    }, 500),
+    []
+  );
 
   const handleInputChange = (e) => {
     searchCountry(e.target.value.trim());
