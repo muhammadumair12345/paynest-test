@@ -1,31 +1,33 @@
 import axios from "axios";
 import React, { Suspense, useEffect, useState, useCallback } from "react";
 
-const CountryCard = React.lazy(() => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        default: ({ country }) => (
-          <div className="bg-white rounded-md shadow w-full h-[10rem]">
-            <div className="p-4">
-              <img
-                src={country.flags.png}
-                className="w-16 h-10 object-cover"
-                alt={country.flags.alt || "Country flag"}
-              />
+const createDelayedCountryCard = (delay) => {
+  return React.lazy(() => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          default: ({ country }) => (
+            <div className="bg-white rounded-md shadow w-full h-[10rem]">
+              <div className="p-4">
+                <img
+                  src={country.flags.png}
+                  className="w-16 h-10"
+                  alt={country.flags.alt || "Country flag"}
+                />
+              </div>
+              <div className="p-4">
+                <h2 className="text-xl font-semibold mb-2">
+                  {country.name.common}
+                </h2>
+                <p>Population: {country.population.toLocaleString()}</p>
+              </div>
             </div>
-            <div className="p-4">
-              <h2 className="text-xl font-semibold mb-2">
-                {country.name.common}
-              </h2>
-              <p>Population: {country.population.toLocaleString()}</p>
-            </div>
-          </div>
-        ),
-      });
-    }, 1000);
+          ),
+        });
+      }, delay);
+    });
   });
-});
+};
 
 const App = () => {
   const [countries, setCountries] = useState([]);
@@ -43,7 +45,13 @@ const App = () => {
         setError("No countries found");
       }
     } catch (err) {
-      setError("An error occurred while fetching countries.");
+      if (err.response) {
+        if (err.response.status === 404) {
+          setError("No countries found.");
+        } else if (err.response.status === 500) {
+          setError("Something went wrong, please try latter");
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -55,7 +63,6 @@ const App = () => {
     );
   }, []);
 
-  // Custom debounce function
   const debounce = (func, delay) => {
     let timeout;
     return (...args) => {
@@ -79,7 +86,7 @@ const App = () => {
     []
   );
 
-  const handleInputChange = (e) => {
+  const handleSearch = (e) => {
     searchCountry(e.target.value.trim());
   };
 
@@ -91,7 +98,7 @@ const App = () => {
             type="search"
             placeholder="Search by name"
             className="w-full px-2 py-3 focus:ring-2 focus:ring-black outline-none border-none rounded-md"
-            onChange={handleInputChange}
+            onChange={handleSearch}
           />
         </section>
         <section className="w-full h-[50rem] overflow-auto">
@@ -104,17 +111,22 @@ const App = () => {
               <div>{error}</div>
             </div>
           ) : countries.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-full rounded-md">
-              {countries.map((country) => (
-                <Suspense
-                  key={country.name.common}
-                  fallback={
-                    <div className="bg-gray-200 rounded-lg shadow h-[10rem] animate-pulse"></div>
-                  }
-                >
-                  <CountryCard country={country} />
-                </Suspense>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-md">
+              {countries.map((country, index) => {
+                const DelayedCountryCard = createDelayedCountryCard(
+                  (index + 1) * 1000
+                );
+                return (
+                  <Suspense
+                    key={country.name.common}
+                    fallback={
+                      <div className="bg-gray-200 rounded-lg shadow h-[10rem] animate-pulse"></div>
+                    }
+                  >
+                    <DelayedCountryCard country={country} />
+                  </Suspense>
+                );
+              })}
             </div>
           ) : (
             <div className="w-full h-full flex text-lg justify-center items-center text-red-700">
